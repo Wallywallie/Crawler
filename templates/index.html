@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with Assistant</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 左侧聊天栏 -->
+        <div class="chat-container">
+            <div class="chat-box" id="chat-box">
+                <!-- 示例对话，后续通过JS动态添加 -->
+                <div class="assistant">
+                    <div class="avatar"></div>
+                    <div class="chat-bubble">你好！有什么需要帮助的吗？</div>
+                </div>
+                <div class="user">
+                </div>
+            </div>
+            <!-- 输入栏 -->
+            <div class="input-container">
+                <input type="text" id="user-input" placeholder="请输入..." />
+                <button id="send-btn">发送</button>
+            </div>
+        </div>
+
+        <!-- 右侧推荐卡片 -->
+        <div class="recommend-container">
+            <div class="card-placeholder"></div>
+            <div class="card-placeholder"></div>
+            <div class="card-placeholder"></div>
+            <div class="card-placeholder"></div>
+            <div class="card-placeholder"></div>
+            <div class="card-placeholder"></div>
+        </div>
+    </div>
+
+    <script src="/static/scripts.js"></script>
+</body>
+</html>
