@@ -7,7 +7,8 @@ from selenium.webdriver.common.by import By
 from typing import(List)
 import logging
 from abc import ABC, abstractmethod
-import re
+import re, os
+import pickle
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, 
@@ -33,6 +34,18 @@ class Content:
         self.content = content
         self.image_caption = image_caption
 
+    def is_para(self):
+        return self.type == 'paragraph'
+    
+    def get(self):
+        return self.content
+    
+    def empty(self) -> bool:
+        if self.content:
+            return False
+        return True
+
+
 class Case:
     """
     表示一个案例，包含标题和多个内容项。
@@ -51,34 +64,77 @@ class Case:
     def print_case(self):
         for i in self.contents:
             print(i.content)
+            print("")
 
-    def save(self, file_name:str):
-        #sanitize file name
-        # 移除或替换不允许的特殊字符，保留字母、数字、空格、连字符、下划线
-        sanitized_name = re.sub(r'[\/:*?"<>|]', '_', file_name)
-    
-        # 如果文件名过长，进行截断
-        max_length = 255 - len('.txt')  # 保证文件名+扩展名不超过255个字符
-        if len(sanitized_name) > max_length:
-            sanitized_name = sanitized_name[:max_length]    
-        path = sanitized_name + '.txt'
-        paragraphs = ''.join(i.content for i in self.contents)
+    def save_all(self, file_name:str):
+
+        sanitized_name =  self.__sanitize_name(file_name)
+        sanitized_name = sanitized_name + '.txt'
+        subfolder_path = self.__subfolder('data')
+        path = os.path.join(subfolder_path, sanitized_name)
+
+        paragraphs = '\n'.join(i.content for i in self.contents)
+        print(paragraphs)
         with open(path, 'w', encoding='utf-8') as f:
             f.write(paragraphs)
 
-    def save_text(self, file_name:str):
-        #sanitize file name
+    def __sanitize_name(self, file_name: str) -> str :
+
         # 移除或替换不允许的特殊字符，保留字母、数字、空格、连字符、下划线
         sanitized_name = re.sub(r'[\/:*?"<>|]', '_', file_name)
     
         # 如果文件名过长，进行截断
         max_length = 255 - len('.txt')  # 保证文件名+扩展名不超过255个字符
         if len(sanitized_name) > max_length:
-            sanitized_name = sanitized_name[:max_length]    
-        path = sanitized_name + '.txt'
-        paragraphs = ''.join(i.content for i in self.contents if i.type == "paragraph")
+            sanitized_name = sanitized_name[:max_length] 
+
+        return sanitized_name
+
+    def __subfolder(self, folder_name : str)->str:
+        current_path = os.getcwd()
+        subfolder_path = os.path.join(current_path, folder_name)
+        if not os.path.exists(subfolder_path):
+            os.makedirs(subfolder_path)
+        return subfolder_path
+
+
+    def save_text(self, file_name:str):
+        sanitized_name =  self.__sanitize_name(file_name)
+        sanitized_name = sanitized_name + '.txt'
+        subfolder_path = self.__subfolder('data')
+        path = os.path.join(subfolder_path, sanitized_name)
+        paragraphs = '\n'.join(i.content for i in self.contents if i.type == "paragraph")
         with open(path, 'w', encoding='utf-8') as f:
             f.write(paragraphs)  
+
+
+    def serialize(self, file_name:str) :
+        sanitized_name =  self.__sanitize_name(file_name)
+        sanitized_name = sanitized_name + '.pkl'        
+        subfolder_path = self.__subfolder('obj')
+        path = os.path.join(subfolder_path, sanitized_name)
+
+        with open(path, 'wb') as f :     
+            pickle.dump(self, f)   
+
+    @staticmethod
+    def deserialize() :
+        current_path = os.getcwd()
+        subfolder_path = os.path.join(current_path, 'obj')
+
+        # 遍历子文件夹中的所有文件
+        for root, dirs, files in os.walk(subfolder_path):
+            for file_name in files:
+                file_path = os.path.join(root, file_name)
+                if file_name.endswith('.pkl'): 
+                    logger.info(f"Processing file: {file_path}")
+                    try:
+                        with open(file_path, 'rb') as f:
+                            obj = pickle.load(f)  # 反序列化对象
+                            obj.save_text(obj.title)
+       
+                    except Exception as e:
+                        logger.error(f"Error deserializing {file_path}: {e}")
 
 # 定义抽象策略类
 class CrawlStrategy(ABC): 
@@ -290,20 +346,40 @@ class Crawler:
     def extract_info(self, url,wait_time=1):
         return self.strategy.extract_info(self.driver, url, wait_time)    
 
+
+
+from difflib import SequenceMatcher
+
+def is_fuzzy_match(search_term, title, threshold=0.5) -> bool:
+    # 使用 SequenceMatcher 计算相似度
+    matcher = SequenceMatcher(None, search_term, title)
+    match_ratio = matcher.find_longest_match(0, len(search_term), 0, len(title)).size / len(search_term)
+    print(title,">>", match_ratio)
+    
+    # 判断相似度是否超过阈值
+    return match_ratio >= threshold
+
+
+"""
 query = "尼康直营店"
 crawler = Crawler(ArchDailyStrategy)
 urls = crawler.get_search_results(query)
 for i in  urls:
-    case = crawler.extract_info(i,wait_time=1)
-    case.save_text(case.title)
+    case = crawler.extract_info(i,wait_time=0.7)
+    case.serialize(case.title)
+
 
 crawler.set_strategy(GdCrawlStrategy)
+
 urls = crawler.get_search_results(query)
 for i in  urls:
-    case = crawler.extract_info(i,wait_time=1)
-    case.save_text(case.title)
+    case = crawler.extract_info(i,wait_time=0.7)
+    case.serialize(case.title)
 
 crawler.close()
+"""
+Case.deserialize()
+
  
 
 
