@@ -7,7 +7,7 @@ import pandas as pd
 from keras_bert import load_trained_model_from_checkpoint, Tokenizer
 import codecs
 
-
+#os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 mode = 0
 maxlen = 128
 learning_rate = 5e-5
@@ -18,9 +18,10 @@ config_path = os.path.join(cur, 'bert', 'chinese_L-12_H-768_A-12/bert_config.jso
 checkpoint_path = os.path.join(cur,  'bert', 'chinese_L-12_H-768_A-12/bert_model.ckpt') 
 dict_path = os.path.join(cur,  'bert', 'chinese_L-12_H-768_A-12/vocab.txt')
 random_path = os.path.join(cur,  'bert', 'random_order_train.json')
-data_path = os.path.join(cur,  'bert', 'event_type_entity_extract_train_test.csv')
+data_path = os.path.join(cur,  'bert', 'titles_train.csv')
 
 token_dict = {}
+
 
 with codecs.open(dict_path, 'r', 'utf8') as reader:
     for line in reader:
@@ -44,13 +45,14 @@ tokenizer = OurTokenizer(token_dict)
 
 
 D = pd.read_csv(data_path, encoding='utf-8', header=None)
+print(D)
 D = D[D[2] != u'其他']
 classes = set(D[2].unique())
 
 
 train_data = []
-for t,c,n in zip(D[1], D[2], D[3]):
-    train_data.append((t, c, n))
+for t,c in zip(D[1], D[2]):
+    train_data.append((t, c))
 
 
 if not os.path.exists(random_path):
@@ -69,7 +71,7 @@ dev_data = [train_data[j] for i, j in enumerate(random_order) if i % 9 == mode]
 train_data = [train_data[j] for i, j in enumerate(random_order) if i % 9 != mode]
 additional_chars = set()
 for d in train_data + dev_data:
-    additional_chars.update(re.findall(u'[^\u4e00-\u9fa5a-zA-Z0-9\*]', d[2]))
+    additional_chars.update(re.findall(u'[^\u4e00-\u9fa5a-zA-Z0-9\*]', d[1]))
 
 if u'，' in additional_chars:
     additional_chars.remove(u'，')
@@ -116,10 +118,11 @@ class data_generator:
             X1, X2, S1, S2 = [], [], [], []
             for i in idxs:
                 d = self.data[i]
-                text, c = d[0][:maxlen], d[1]
-                text = u'___%s___%s' % (c, text)
+                text= d[0][:maxlen]
+                #text = u'___%s___%s' % (c, text) #将文本 text 和类别 c 结合在一起: __c__text
+
                 tokens = tokenizer.tokenize(text)
-                e = d[2]
+                e = d[1]
                 e_tokens = tokenizer.tokenize(e)[1:-1]
                 s1, s2 = np.zeros(len(tokens)), np.zeros(len(tokens))
                 start = list_find(tokens, e_tokens)
@@ -190,10 +193,9 @@ def softmax(x):
     return x / np.sum(x)
 
 
-def extract_entity(text_in, c_in):
-    if c_in not in classes:
-        return 'NaN'
-    text_in = u'___%s___%s' % (c_in, text_in)
+def extract_entity(text_in):
+
+    #text_in = u'___%s___%s' % (c_in, text_in)
     text_in = text_in[:510]
     _tokens = tokenizer.tokenize(text_in)
     _x1, _x2 = tokenizer.encode(first=text_in)
@@ -242,8 +244,9 @@ class Evaluate(Callback):
 
         with open('dev_pred.json', 'w', encoding='utf-8') as F:
             for d in tqdm(iter(dev_data)):
-                R = extract_entity(d[0], d[1])
-                if R == d[2]:
+                R = extract_entity(d[0])
+                print("R: ", R)
+                if R == d[1]:
                     A += 1
                 s = ', '.join(d + (R,))
                 F.write(s + '\n')  
@@ -255,7 +258,7 @@ def test(test_data):
 
     with open('result.txt', 'w', encoding= 'utf-8') as F:
         for d in tqdm(iter(test_data)):
-            s = u'"%s","%s"\n' % (d[0], extract_entity(d[1], d[2]))
+            s = u'"%s","%s"\n' % (d[0], extract_entity(d[1]))
             F.write(s)
 
 
@@ -267,7 +270,7 @@ train_D = data_generator(train_data)
 if __name__ == '__main__':
     train_model.fit_generator(train_D.__iter__(),
                               steps_per_epoch=len(train_D),
-                              epochs =1,
+                              epochs =20,
                               callbacks=[evaluator]
                              )
 else:
