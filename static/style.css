@@ -12,7 +12,7 @@ body {
     display: flex;
     height: 90vh;
     width: 80vw;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    /*box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);*/
     border-radius: 20px;
     overflow: hidden;
 }
@@ -107,7 +107,7 @@ body {
 }
 
 .recommend-container {
-    width: 65%;
+    width: 70%;
     padding: 20px;
     display: flex;
     flex-wrap: wrap;

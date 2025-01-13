@@ -174,7 +174,6 @@ ps2 = Lambda(lambda x: x[0][..., 0] - (1 - x[1][..., 0]) * 1e10)([ps2, x_mask])
 
 model = Model([x1_in, x2_in], [ps1, ps2])
 
-
 train_model = Model([x1_in, x2_in, s1_in, s2_in], [ps1, ps2])
 
 loss1 = K.mean(K.categorical_crossentropy(s1_in, ps1, from_logits=True))
@@ -245,7 +244,7 @@ class Evaluate(Callback):
         with open('dev_pred.json', 'w', encoding='utf-8') as F:
             for d in tqdm(iter(dev_data)):
                 R = extract_entity(d[0])
-                print("R: ", R)
+                #print("R: ", R)
                 if R == d[1]:
                     A += 1
                 s = ', '.join(d + (R,))
@@ -274,4 +273,4 @@ if __name__ == '__main__':
                               callbacks=[evaluator]
                              )
 else:
-    train_model.load_weights('best_model.weights')
+    train_model.load_weights('best_model.weights').expect_partial()

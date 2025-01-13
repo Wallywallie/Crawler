@@ -1,22 +1,24 @@
 document.getElementById('send-btn').addEventListener('click', function() {
     const inputField = document.getElementById('user-input');
     const chatBox = document.getElementById('chat-box');
+    let input = inputField.value;
     if (inputField.value.trim() !== '') {
         // 添加用户对话
-        const userMessage = createChatBubble(inputField.value, 'user');
+        const userMessage = createChatBubble(input, 'user');
         chatBox.appendChild(userMessage);
+        inputField.value = "";
         fetch('/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ message: inputField.value }),
+            body: JSON.stringify({ message: input }),
         })
         .then(response => response.json())
         .then(data => {
             const chatBox = document.getElementById("chat-box");
             const assistantMessage = createChatBubble(data.reply, 'assistant');
-            document.getElementById("user-input").value = "";
+            
             chatBox.appendChild(assistantMessage);
             chatBox.scrollTop = chatBox.scrollHeight;
         });
@@ -34,7 +36,6 @@ function createChatBubble(content, role) {
     const bubbleDiv = document.createElement('div');
     bubbleDiv.classList.add('chat-bubble');
 
-    
     bubbleDiv.textContent = content;
 
     if (role === 'user') {
@@ -46,3 +47,5 @@ function createChatBubble(content, role) {
     }
     return messageDiv;
 };
+
+//右侧推荐卡片显示信息
